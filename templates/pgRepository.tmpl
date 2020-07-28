@@ -40,7 +40,10 @@ func (m *{{.ModelName}}PgRepository) fetch(ctx context.Context, query string, ar
 	for rows.Next() {
 		t := Entity{}
 		err = rows.Scan(
-			&t.Id)
+			{{ range $key, $value := .Attributes }}
+				&t.{{ $value.ModelName  }},
+			{{ end }}
+			)
 
 		if err != nil {
 			logrus.Error(err)
@@ -54,7 +57,7 @@ func (m *{{.ModelName}}PgRepository) fetch(ctx context.Context, query string, ar
 }
 
 func (m *{{.ModelName}}PgRepository) Index(ctx context.Context, cursor string, num int64) (res []Entity, nextCursor string, err error) {
-	query := `SELECT id FROM {{ .Entity }} `
+	query := `SELECT {{.Fields}} FROM {{ .Entity }} `
 
 	//decodedCursor, err := helpers.DecodeCursor(cursor)
 	//if err != nil && cursor != "" {
@@ -73,8 +76,8 @@ func (m *{{.ModelName}}PgRepository) Index(ctx context.Context, cursor string, n
 	return
 }
 
-func (m *{{.ModelName}}PgRepository) Get(ctx context.Context, id int64) (res Entity, err error) {
-	query := `SELECT id FROM {{ .Entity }} WHERE ID = $1`
+func (m *{{.ModelName}}PgRepository) Get(ctx context.Context, id {{.IdType}}) (res Entity, err error) {
+	query := `SELECT {{.Fields}} FROM {{ .Entity }} WHERE ID = $1`
 
 	list, err := m.fetch(ctx, query, id)
 	if err != nil {

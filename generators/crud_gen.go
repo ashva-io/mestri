@@ -13,6 +13,7 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -29,6 +30,7 @@ type Model struct {
 type Attr struct {
 	DataType  string
 	ModelName string
+	KeyType   string
 }
 
 func main() {
@@ -46,52 +48,12 @@ func main() {
 		err := rows.Scan(&table_name)
 		die(err)
 		buildEntity(table_name, db)
-		buildHandler(table_name)
-		buildUsecase(table_name)
 		entities = append(entities, table_name)
 		models = append(models, Model{Package: table_name, ModelName: toCamelCase(table_name)})
 
 	}
 	buildApp(entities, models)
 	fmt.Print(entities)
-}
-
-func buildHandler(table_name string) bool {
-	dirPath := "app/" + table_name
-	fileName := dirPath + "/handler.go"
-	f, err := os.Create(fileName)
-	die(err)
-	defer f.Close()
-	appTemplate := template.Must(template.ParseFiles("templates/handler.tmpl"))
-	appTemplate.Execute(f, struct {
-		Timestamp time.Time
-		Entity    string
-		ModelName string
-	}{
-		Timestamp: time.Now(),
-		Entity:    table_name,
-		ModelName: toCamelCase(table_name),
-	})
-	return true
-}
-
-func buildUsecase(table_name string) bool {
-	dirPath := "app/" + table_name
-	fileName := dirPath + "/usecase.go"
-	f, err := os.Create(fileName)
-	die(err)
-	defer f.Close()
-	appTemplate := template.Must(template.ParseFiles("templates/usecase.tmpl"))
-	appTemplate.Execute(f, struct {
-		Timestamp time.Time
-		Entity    string
-		ModelName string
-	}{
-		Timestamp: time.Now(),
-		Entity:    table_name,
-		ModelName: toCamelCase(table_name),
-	})
-	return true
 }
 
 func buildApp(entities []string, models []Model) bool {
@@ -125,44 +87,101 @@ func buildEntity(table_name string, db *sql.DB) bool {
 
 	packageTemplate := template.Must(template.ParseFiles("templates/entity.tmpl"))
 
-	attr, err := db.Query("select column_name, data_type from information_schema.columns where table_name = $1", table_name)
+	attr, err := db.Query("select column_name, data_type from information_schema.columns where table_name = $1 order by column_name", table_name)
 
 	entity := make(map[string]Attr)
+	var id_data_type string
 
 	for attr.Next() {
 		var column_name string
 		var data_type string
 		var data_type_map string
+		var key_type string
+
 		attr.Scan(&column_name, &data_type)
 		switch data_type {
 		case "uuid":
-			data_type_map = "string"
+			data_type_map = "NullString"
+			key_type = "string"
 		case "text":
-			data_type_map = "string"
+			data_type_map = "NullString"
+			key_type = "string"
 		case "integer":
-			data_type_map = "int64"
+			data_type_map = "NullInt64"
+			key_type = "int64"
 		case "timestamp with time zone":
-			data_type_map = "string"
+			data_type_map = "NullString"
+			key_type = "string"
 		case "json":
-			data_type_map = "string"
+			data_type_map = "NullString"
+			key_type = "string"
 		}
-		entity[column_name] = Attr{DataType: data_type_map, ModelName: toCamelCase(column_name)}
+		if column_name == "id" {
+			id_data_type = key_type
+		}
+		entity[column_name] = Attr{DataType: data_type_map, ModelName: toCamelCase(column_name), KeyType: key_type}
 	}
 
 	packageTemplate.Execute(f, struct {
 		Timestamp time.Time
 		Model     string
 		Entity    map[string]Attr
+		IdType    string
 	}{
 		Timestamp: time.Now(),
 		Model:     table_name,
 		Entity:    entity,
+		IdType:    id_data_type,
 	})
-	buildPgRepo(table_name, entity)
+	buildUsecase(table_name, id_data_type)
+	buildPgRepo(table_name, entity, id_data_type)
+	buildHandler(table_name, id_data_type)
 	return true
 }
 
-func buildPgRepo(table_name string, attributes map[string]Attr) bool {
+func buildHandler(table_name string, id_data_type string) bool {
+	dirPath := "app/" + table_name
+	fileName := dirPath + "/handler.go"
+	f, err := os.Create(fileName)
+	die(err)
+	defer f.Close()
+	appTemplate := template.Must(template.ParseFiles("templates/handler.tmpl"))
+	appTemplate.Execute(f, struct {
+		Timestamp time.Time
+		Entity    string
+		ModelName string
+		IdType    string
+	}{
+		Timestamp: time.Now(),
+		Entity:    table_name,
+		ModelName: toCamelCase(table_name),
+		IdType:    id_data_type,
+	})
+	return true
+}
+
+func buildUsecase(table_name string, id_data_type string) bool {
+	dirPath := "app/" + table_name
+	fileName := dirPath + "/usecase.go"
+	f, err := os.Create(fileName)
+	die(err)
+	defer f.Close()
+	appTemplate := template.Must(template.ParseFiles("templates/usecase.tmpl"))
+	appTemplate.Execute(f, struct {
+		Timestamp time.Time
+		Entity    string
+		ModelName string
+		IdType    string
+	}{
+		Timestamp: time.Now(),
+		Entity:    table_name,
+		ModelName: toCamelCase(table_name),
+		IdType:    id_data_type,
+	})
+	return true
+}
+
+func buildPgRepo(table_name string, attributes map[string]Attr, id_data_type string) bool {
 	dirPath := "app/" + table_name
 	err := os.Mkdir(dirPath, 0755)
 
@@ -171,17 +190,27 @@ func buildPgRepo(table_name string, attributes map[string]Attr) bool {
 	die(err)
 	defer f.Close()
 
+	keys := make([]string, 0, len(attributes))
+	for k := range attributes {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
 	repoTemplate := template.Must(template.ParseFiles("templates/pgRepository.tmpl"))
 	repoTemplate.Execute(f, struct {
 		Timestamp  time.Time
 		Entity     string
 		ModelName  string
 		Attributes map[string]Attr
+		Fields     string
+		IdType     string
 	}{
 		Timestamp:  time.Now(),
 		Entity:     table_name,
 		ModelName:  toCamelCase(table_name),
 		Attributes: attributes,
+		Fields:     strings.Join(keys, ","),
+		IdType:     id_data_type,
 	})
 
 	return true

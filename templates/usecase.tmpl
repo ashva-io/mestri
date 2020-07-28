@@ -42,7 +42,7 @@ func (a *usecase) Index(c context.Context, cursor string, num int64) (res []Enti
 	return
 }
 
-func (a *usecase) Get(c context.Context, id int64) (res Entity, err error) {
+func (a *usecase) Get(c context.Context, id {{.IdType}}) (res Entity, err error) {
 	ctx, cancel := context.WithTimeout(c, a.contextTimeout)
 	defer cancel()
 

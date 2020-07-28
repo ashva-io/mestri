@@ -54,8 +54,8 @@ func (a *{{.ModelName}}Handler) Get(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusNotFound, domain.ErrNotFound.Error())
 	}
-
-	id := int64(idP)
+	
+	id := {{.IdType}}(idP)
 	ctx := c.Request().Context()
     fmt.Println("GET {{.ModelName}} CALLED ")
     fmt.Println(id)
