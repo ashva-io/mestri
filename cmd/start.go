@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/heraju/mestri"
 	"github.com/heraju/mestri/app"
@@ -25,7 +26,12 @@ func main() {
 	e.GET("/", hello)
 	app.Connect(e, db)
 	// Start server
-	e.Logger.Fatal(e.Start(":1323"))
+	port := os.Getenv("PORT")
+
+	if port == "" {
+		log.Fatal("$PORT must be set")
+	}
+	e.Logger.Fatal(e.Start(":" + port))
 }
 
 // Handler
