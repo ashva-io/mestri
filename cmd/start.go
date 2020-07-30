@@ -14,10 +14,7 @@ import (
 )
 
 func main() {
-	err := dotenv.Load()
-	if err != nil {
-		log.Fatalf("Error loading .env file: %v", err)
-	}
+
 	db, err := sql.Open("postgres", mestri.PsqlInfo)
 	die(err)
 	defer db.Close()
@@ -34,7 +31,12 @@ func main() {
 	port := os.Getenv("PORT")
 
 	if port == "" {
-		log.Fatal("$PORT must be set")
+		//log.Fatal("$PORT must be set")
+		err := dotenv.Load()
+		if err != nil {
+			log.Fatalf("Error loading .env file: %v", err)
+		}
+		port = os.Getenv("PORT")
 	}
 	e.Logger.Fatal(e.Start(":" + port))
 }
