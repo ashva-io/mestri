@@ -3,6 +3,7 @@ module github.com/heraju/mestri
 go 1.13
 
 require (
+	github.com/alexsasharegan/dotenv v0.0.0-20171113213728-090a4d1b5d42
 	github.com/iancoleman/strcase v0.0.0-20191112232945-16388991a334 // indirect
 	github.com/labstack/echo v3.3.10+incompatible // indirect
 	github.com/labstack/echo/v4 v4.1.16

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/alexsasharegan/dotenv"
 	"github.com/heraju/mestri"
 	"github.com/heraju/mestri/app"
 	"github.com/labstack/echo/v4"
@@ -13,6 +14,10 @@ import (
 )
 
 func main() {
+	err := dotenv.Load()
+	if err != nil {
+		log.Fatalf("Error loading .env file: %v", err)
+	}
 	db, err := sql.Open("postgres", mestri.PsqlInfo)
 	die(err)
 	defer db.Close()

@@ -91,6 +91,7 @@ func buildEntity(table_name string, db *sql.DB) bool {
 
 	entity := make(map[string]Attr)
 	var id_data_type string
+	var is_string_key bool
 
 	for attr.Next() {
 		var column_name string
@@ -118,6 +119,9 @@ func buildEntity(table_name string, db *sql.DB) bool {
 		}
 		if column_name == "id" {
 			id_data_type = key_type
+			if key_type == "string" {
+				is_string_key = true
+			}
 		}
 		entity[column_name] = Attr{DataType: data_type_map, ModelName: toCamelCase(column_name), KeyType: key_type}
 	}
@@ -135,11 +139,11 @@ func buildEntity(table_name string, db *sql.DB) bool {
 	})
 	buildUsecase(table_name, id_data_type)
 	buildPgRepo(table_name, entity, id_data_type)
-	buildHandler(table_name, id_data_type)
+	buildHandler(table_name, id_data_type, is_string_key)
 	return true
 }
 
-func buildHandler(table_name string, id_data_type string) bool {
+func buildHandler(table_name string, id_data_type string, is_string_key bool) bool {
 	dirPath := "app/" + table_name
 	fileName := dirPath + "/handler.go"
 	f, err := os.Create(fileName)
@@ -147,15 +151,17 @@ func buildHandler(table_name string, id_data_type string) bool {
 	defer f.Close()
 	appTemplate := template.Must(template.ParseFiles("templates/handler.tmpl"))
 	appTemplate.Execute(f, struct {
-		Timestamp time.Time
-		Entity    string
-		ModelName string
-		IdType    string
+		Timestamp  time.Time
+		Entity     string
+		ModelName  string
+		IdType     string
+		IsStingKey bool
 	}{
-		Timestamp: time.Now(),
-		Entity:    table_name,
-		ModelName: toCamelCase(table_name),
-		IdType:    id_data_type,
+		Timestamp:  time.Now(),
+		Entity:     table_name,
+		ModelName:  toCamelCase(table_name),
+		IdType:     id_data_type,
+		IsStingKey: is_string_key,
 	})
 	return true
 }

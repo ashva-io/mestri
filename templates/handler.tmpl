@@ -9,6 +9,7 @@ import (
 	"github.com/labstack/echo/v4"
     "github.com/heraju/mestri/domain"
 	"github.com/sirupsen/logrus"
+	
 )
 
 // ResponseError represent the reseponse error struct
@@ -50,10 +51,15 @@ func (a *{{.ModelName}}Handler) Index(c echo.Context) error {
 // Get will get {{.Entity}} by given id
 func (a *{{.ModelName}}Handler) Get(c echo.Context) error {
     
-	idP, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		return c.JSON(http.StatusNotFound, domain.ErrNotFound.Error())
-	}
+	{{if .IsStingKey}} 
+		idP := c.Param("id")
+	{{else}} 
+		idP, err := strconv.Atoi(c.Param("id"))
+		if err != nil {
+			return c.JSON(http.StatusNotFound, domain.ErrNotFound.Error())
+		}
+	{{end}}
+	
 	
 	id := {{.IdType}}(idP)
 	ctx := c.Request().Context()
@@ -63,8 +69,8 @@ func (a *{{.ModelName}}Handler) Get(c echo.Context) error {
 	if err != nil {
 		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
 	}
-
-	return c.JSON(http.StatusOK, art)
+	
+	return c.JSON(http.StatusOK, []Entity{art})
 }
 
 
