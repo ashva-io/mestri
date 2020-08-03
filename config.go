@@ -12,3 +12,5 @@ const (
 
 // PsqlInfo : PsqlInfo is const of connection string to connect to DB
 var PsqlInfo = fmt.Sprintf("host=%s port=%d user=%s "+"password=%s dbname=%s", host, port, user, password, dbname)
+
+//var PsqlInfo = "postgres://yzydeggkwlzlzu:abb532e1351fcef2db086340610d29ecd385e6af18c212010f4bde63290c4d9f@ec2-54-234-44-238.compute-1.amazonaws.com:5432/dabc8bfcspdah9"

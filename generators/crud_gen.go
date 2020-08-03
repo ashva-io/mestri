@@ -28,9 +28,10 @@ type Model struct {
 }
 
 type Attr struct {
-	DataType  string
-	ModelName string
-	KeyType   string
+	DataType   string
+	ModelName  string
+	KeyType    string
+	ReaderType string
 }
 
 func main() {
@@ -42,7 +43,7 @@ func main() {
 
 	entities := make([]string, 0)
 	models := make([]Model, 0)
-
+	cleanApp()
 	for rows.Next() {
 		var table_name string
 		err := rows.Scan(&table_name)
@@ -54,6 +55,23 @@ func main() {
 	}
 	buildApp(entities, models)
 	fmt.Print(entities)
+}
+
+func cleanApp() {
+	_, err := os.Stat("app")
+	if os.IsNotExist(err) {
+		errDir := os.MkdirAll("app", 0755)
+		if errDir != nil {
+			log.Fatal(err)
+		}
+
+	} else {
+		os.RemoveAll("app/")
+		errDir := os.MkdirAll("app", 0755)
+		if errDir != nil {
+			log.Fatal(err)
+		}
+	}
 }
 
 func buildApp(entities []string, models []Model) bool {
@@ -123,7 +141,7 @@ func buildEntity(table_name string, db *sql.DB) bool {
 				is_string_key = true
 			}
 		}
-		entity[column_name] = Attr{DataType: data_type_map, ModelName: toCamelCase(column_name), KeyType: key_type}
+		entity[column_name] = Attr{ReaderType: toCamelCase(key_type), DataType: data_type_map, ModelName: toCamelCase(column_name), KeyType: key_type}
 	}
 
 	packageTemplate.Execute(f, struct {
@@ -197,10 +215,21 @@ func buildPgRepo(table_name string, attributes map[string]Attr, id_data_type str
 	defer f.Close()
 
 	keys := make([]string, 0, len(attributes))
+	c_keys := make([]string, 0, len(attributes))
+	i_keys := make([]string, 0, len(attributes))
+	u_keys := make([]string, 0, len(attributes))
 	for k := range attributes {
 		keys = append(keys, k)
+		c_keys = append(c_keys, k+"=?")
 	}
+	for i, ke := range keys {
+		ik := fmt.Sprintf("$%d", (i + 1))
+		i_keys = append(i_keys, ik)
+		u_keys = append(u_keys, ke+"="+ik)
+	}
+
 	sort.Strings(keys)
+	sort.Strings(c_keys)
 
 	repoTemplate := template.Must(template.ParseFiles("templates/pgRepository.tmpl"))
 	repoTemplate.Execute(f, struct {
@@ -210,6 +239,8 @@ func buildPgRepo(table_name string, attributes map[string]Attr, id_data_type str
 		Attributes map[string]Attr
 		Fields     string
 		IdType     string
+		CrFields   string
+		InsFields  string
 	}{
 		Timestamp:  time.Now(),
 		Entity:     table_name,
@@ -217,6 +248,8 @@ func buildPgRepo(table_name string, attributes map[string]Attr, id_data_type str
 		Attributes: attributes,
 		Fields:     strings.Join(keys, ","),
 		IdType:     id_data_type,
+		CrFields:   strings.Join(u_keys, ","),
+		InsFields:  strings.Join(i_keys, ","),
 	})
 
 	return true

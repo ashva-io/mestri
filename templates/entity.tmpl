@@ -14,14 +14,18 @@ import (
 // Entity : Entity is the model
 type Entity struct {
 	{{ range $key, $value := .Entity }}
-   		{{ $value.ModelName  }} {{ $value.DataType }} `json:"{{$key}},{{ $value.KeyType }}"`
+   		{{ $value.ModelName  }} {{ $value.KeyType }} `json:"{{$key}}"`
 	{{ end }}
 }
+
 
 // Repository represent the {{ .Model }} repository contract
 type Repository interface {
 	Index(ctx context.Context, cursor string, num int64) (res []Entity, nextCursor string, err error)
 	Get(ctx context.Context, id {{.IdType}}) (Entity, error)
+	Update(ctx context.Context, en *Entity, id {{.IdType}}) error
+	Create(ctx context.Context, en *Entity) error
+	Delete(ctx context.Context, id {{.IdType}}) error
 }
 
 
@@ -29,6 +33,9 @@ type Repository interface {
 type Usecase interface {
 	Index(ctx context.Context, cursor string, num int64) ([]Entity, string, error)
 	Get(ctx context.Context, id {{.IdType}}) (Entity, error)	
+	Update(ctx context.Context, en *Entity, id {{.IdType}}) error
+	Create(context.Context, *Entity) error
+	Delete(ctx context.Context, id {{.IdType}}) error
 }
 
 //NullString is a wrapper around sql.NullString

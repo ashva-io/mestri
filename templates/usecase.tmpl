@@ -5,7 +5,7 @@ package {{ .Entity }}
 import (
 	"context"
 	"time"
-
+	"github.com/heraju/mestri/domain"
 	
 )
 
@@ -56,4 +56,32 @@ func (a *usecase) Get(c context.Context, id {{.IdType}}) (res Entity, err error)
 	}
 	
 	return
+}
+
+func (a *usecase) Update(c context.Context, en *Entity, id {{.IdType}}) (err error) {
+	ctx, cancel := context.WithTimeout(c, a.contextTimeout)
+	defer cancel()
+
+	return a.repo.Update(ctx, en, id)
+}
+
+func (a *usecase) Create(c context.Context, en *Entity) (err error) {
+	ctx, cancel := context.WithTimeout(c, a.contextTimeout)
+	defer cancel()
+	
+	err = a.repo.Create(ctx, en)
+	return
+}
+
+func (a *usecase) Delete(c context.Context, id {{.IdType}}) (err error) {
+	ctx, cancel := context.WithTimeout(c, a.contextTimeout)
+	defer cancel()
+	existedEntity, err := a.repo.Get(ctx, id)
+	if err != nil {
+		return
+	}
+	if existedEntity == (Entity{}) {
+		return domain.ErrNotFound
+	}
+	return a.repo.Delete(ctx, id)
 }
