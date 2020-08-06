@@ -107,14 +107,14 @@ func (m *{{.ModelName}}PgRepository) Get(ctx context.Context, id {{.IdType}}) (r
 
 
 func (m *{{.ModelName}}PgRepository) Create(ctx context.Context, en *Entity) (err error) {
-	query := `INSERT INTO {{ .Entity }}({{.Fields}}) VALUES ({{.InsFields}});`
+	query := `INSERT INTO {{ .Entity }}({{.InsFdName}}) VALUES ({{.InsFields}});`
 	stmt, err := m.Conn.PrepareContext(ctx, query)
 	if err != nil {
 		return
 	}
 
 	_, err = stmt.ExecContext(ctx,
-	{{ range $key, $value := .Attributes }}
+	{{ range $key, $value := .InsAttributes }}
 		en.{{ $value.ModelName  }},
 	{{ end }})
 
@@ -126,7 +126,7 @@ func (m *{{.ModelName}}PgRepository) Create(ctx context.Context, en *Entity) (er
 }
 
 func (m *{{.ModelName}}PgRepository) Update(ctx context.Context, en *Entity, id {{.IdType}}) (err error) {
-	query := `UPDATE {{ .Entity }} set {{ .CrFields }} WHERE ID = ?`
+	query := `UPDATE {{ .Entity }} set {{ .CrFields }} WHERE {{.IdName}} = ${{.UpAttrLen}}`
 
 	stmt, err := m.Conn.PrepareContext(ctx, query)
 	if err != nil {
@@ -134,9 +134,11 @@ func (m *{{.ModelName}}PgRepository) Update(ctx context.Context, en *Entity, id 
 	}
 
 	res, err := stmt.ExecContext(ctx, 
-	{{ range $key, $value := .Attributes }}
+	{{ range $key, $value := .UpdateAttributes }}
 		en.{{ $value.ModelName  }},
-	{{ end }})
+	{{ end }}
+		en.{{.IdModelName}},
+	)
 	
 	if err != nil {
 		return
